@@ -3,8 +3,8 @@
  */
 'use strict';
 //noinspection JSUnresolvedFunction
-var myServices = angular.module('myServices',[]);
-var storage = window.localStorage, agentCode = storage.getItem('agentCode').toUpperCase() || 'YZTZ', source = agentCode || '';
+var myServices = angular.module('myServices', []);
+var storage = window.localStorage, agentCode = storage.getItem('agentCode') ? storage.getItem('agentCode').toUpperCase() : 'YZTZ', source = agentCode || '';
 //请求地址服务
 myServices.factory('URLService', function () {
     var baseHost = '';
@@ -42,14 +42,22 @@ myServices.factory('URLService', function () {
         withdrawPwdModify: '/user/security/withdrawPwdModify.json',
         getSubBank: '/pay/bankCard/getSubBank.json',
         getFundDetail: '/pay/user/fundDetail/getFundDetail.json',
-        getFundAll:'/pay/user/fundDetail/getFundAll.json',
+        getFundAll: '/pay/user/fundDetail/getFundAll.json',
         getNoticeList: '/index/getNoticeList.json',
         forgetWithdrawPasswordCode: '/user/security/forgetWithdrawPasswordCode.json',
         resetWithdrawPwd: '/user/security/resetWithdrawPwd.json',
         getNoticeById: '/index/getNoticeById.json',
         h5FirstPayUrl: '/pay/payGateway/h5FirstPayUrl.json',
         h5PayUrl: '/pay/payGateway/h5PayUrl.json',
-        payGateway: '/pay/payGateway/getLLWapPayUrl.json',
+        //支付接口
+        //连连支付
+        getLLWapPayUrl: '/pay/payGateway/getLLWapPayUrl.json',
+        //联动支付
+        liandongH5pay: '/pay/payGateway/liandongH5pay.json',
+        //爱贝支付
+        iappPayH5Pay: '/pay/payGateway/iappPayH5Pay.json',
+        //支付接口列表
+        getPayListStatus: '/index/getPayListStatus.json',
         //期货-点卖
         getSaleFutures: '/futures/strategy/getSaleFuturesStrategy.json',
         getRisk: '/futuresindex/getRiskByCommodityNo.json',
@@ -689,7 +697,8 @@ myServices.factory('PayService', function ($http, $httpParamSerializerJQLike, UR
                 data: $httpParamSerializerJQLike(data)
             });
         },
-        payGateway: function (money) {
+        //联动支付
+        liandongH5pay: function (money) {
             var data = {
                 device: 1,
                 money: money,
@@ -698,9 +707,48 @@ myServices.factory('PayService', function ($http, $httpParamSerializerJQLike, UR
             };
             return $http({
                 method: 'POST',
-                url: URLService.getURL('payGateway'),
+                url: URLService.getURL('liandongH5pay'),
                 data: $httpParamSerializerJQLike(data)
             });
+        },
+        //爱贝支付
+        iappPayH5Pay: function (money) {
+            var data = {
+                device: 1,
+                money: money,
+                agentCode: agentCode,
+                source: agentCode
+            };
+            return $http({
+                method: 'POST',
+                url: URLService.getURL('iappPayH5Pay'),
+                data: $httpParamSerializerJQLike(data)
+            });
+        },
+        //连连支付
+        getLLWapPayUrl: function (money) {
+            var data = {
+                device: 1,
+                money: money,
+                agentCode: agentCode,
+                source: agentCode
+            };
+            return $http({
+                method: 'POST',
+                url: URLService.getURL('getLLWapPayUrl'),
+                data: $httpParamSerializerJQLike(data)
+            });
+        },
+        //支付接口列表
+        getPayListStatus: function () {
+            var params = {
+                device: 1,
+            };
+            return $http({
+                method: 'GET',
+                url: URLService.getURL('getPayListStatus'),
+                params: params
+            })
         },
         //支付宝
         alipay: function (money, account) {
@@ -894,7 +942,8 @@ myServices.factory('TradeService', function ($http, $httpParamSerializerJQLike, 
             });
         },
         createFuturesStrategy: function (data) {
-            data.device = 1; data.agentCode = agentCode;
+            data.device = 1;
+            data.agentCode = agentCode;
             data.source = agentCode;
             return $http({
                 method: 'POST',
@@ -979,7 +1028,7 @@ myServices.factory('StockService', function ($http, SystemService, URLService) {
     };
 });
 //系统服务
-myServices.factory('SystemService', function ($http,URLService) {
+myServices.factory('SystemService', function ($http, URLService) {
     //节假日 CNY中国假日，USD美国假日
     var holidays = {
         CNY: {},
@@ -1001,7 +1050,7 @@ myServices.factory('SystemService', function ($http,URLService) {
     }, 1000);
 
     return {
-        getServerTime:function () {
+        getServerTime: function () {
             return $http({
                 url: URLService.getURL('getServerTime'),
                 method: 'GET'
@@ -1184,21 +1233,28 @@ myServices.factory('SystemService', function ($http,URLService) {
             return isIn;
         },
         //判断时间，显示不同的电话
-        cellPhoneNumber: function (){
-            var now = new Date(systemTime), time = X.formatDate(now,'h:m'), period = ['17:30', '21:00'],obj = {cellPhone: '0571-28284082',cellPhoneATag : 'tel:0571-28284082'};
-            if(time >= period[0] && time <= period[1]){obj.cellPhone = '0571-28284082';obj.cellPhoneATag = 'tel:0571-28284082'};//到时候再换成手机号
+        cellPhoneNumber: function () {
+            var now = new Date(systemTime), time = X.formatDate(now, 'h:m'), period = ['17:30', '21:00'], obj = {
+                cellPhone: '0571-28284082',
+                cellPhoneATag: 'tel:0571-28284082'
+            };
+            if (time >= period[0] && time <= period[1]) {
+                obj.cellPhone = '0571-28284082';
+                obj.cellPhoneATag = 'tel:0571-28284082'
+            }
+            ;//到时候再换成手机号
             return obj;
         },
 
         agentIndex: function () {
             var storage = window.localStorage,
-                agentCode = storage.getItem('agentCode'),/*
-                agentCode01 = storage.getItem('agentCode01'),*/
+                agentCode = storage.getItem('agentCode'), /*
+             agentCode01 = storage.getItem('agentCode01'),*/
                 indexUrl/*,indexUrl = '/index';agentCode != ''? indexUrl = '/index/9090' : indexUrl = '/index'*/;
-            if(agentCode == '' || !agentCode){
+            if (agentCode == '' || !agentCode) {
                 indexUrl = '/index';
                 return indexUrl;
-            }else if(agentCode != ''){
+            } else if (agentCode != '') {
                 indexUrl = '/index/' + agentCode;
                 return indexUrl;
             }

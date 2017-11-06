@@ -3,7 +3,7 @@
  */
 (function () {
     //type = 'dev'||'online'
-    var type = 'online', rootURL = '/app/', i, headEl = document.getElementsByTagName('head')[0], sync = true, appVersionTag = '?v=' + new Date().getTime();
+    var type = 'dev', rootURL = '/app/', i, headEl = document.getElementsByTagName('head')[0], sync = true, appVersionTag = '?v=' + new Date().getTime();
     var styles = {
         'dev': ['css/merge.css'],
         'online': ['css/merge.min.css']

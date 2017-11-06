@@ -51,7 +51,7 @@
         </div>
         <div class="pl15 pr15 pt20">
             <form id="payForm" ng-submit="pay();" method="post">
-                <input class="hiddenInp" type="hidden" name="req_data">
+                <input ng-if="payType == 'pay_lianlian' || payType == 'pay_iapppay'" class="hiddenInp" type="hidden" name="req_data">
                 <input type="submit" class="btn btn-blue" value="提交" />
             </form>
         </div>

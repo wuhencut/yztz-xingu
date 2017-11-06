@@ -1864,14 +1864,18 @@ myControllers.controller('OuterTradeCtrl', function ($scope, $q, $routeParams, T
 		slineData.forEach(function (str) {
 			var arr = str.split(',');
 			lastTime = X.formatDate(X.toInt(arr[0]), 'hm') - 0;
+			X.log(lastTime);
 			data[lastTime] = {
 				current: X.toFloat(arr[1]),
-				volume: 0,
-				time: lastTime
+				volume: 0,//都是0，不知道是不是为了之后需求做准备的
+				time: lastTime//获取的时间
 			};
 		});
 
 		sChart = new X.Sline(chartOpts['sline'][$scope.commodityNo]);
+		//lastTime: 上次获取数据的时间，根据这个时间来选择横坐标该显示的范围
+		// X.log(SystemService.getRealPeriod($scope.commodityNo, lastTime), lastTime);
+		X.log(data)
 		sChart.draw({
 			data: data,
 			close: X.toFloat(QUOTE_DATA['yesterdayPrice']),
@@ -2849,13 +2853,39 @@ myControllers.controller('FundCtrl', function ($scope, $q, $location, PayService
 	$scope.confirmFundType($scope.currType, $scope.currPage);
 });
 //充值方式 DONE
-myControllers.controller('PayTypeCtrl', function ($scope, $q, $location) {
+myControllers.controller('PayTypeCtrl', function ($scope, $q, $location, PayService) {
 	$scope.backURL = $location.search()['backURL'] || '/myHome';
+	var href = '';
+	$scope.payList = [];
+	var paydata;
+	PayService.getPayListStatus().then(function (res) {
+		var data = res.data;
+		if(data.code == 100){
+			paydata = data.data;
+			paydata.forEach(function (item) {
+				if(item['pay_status'] == 1){
+					if(item['pay_key'] != 'pay_zhifubao'){
+						href = '#/payBank?backURL=' + $scope.backURL + '&type=' + item['pay_key'];
+					}else if(item['pay_key'] == 'pay_zhifubao'){
+						href = '#/alipay';
+					}
+					item.href = href;
+					$scope.payList.push(item);
+				}
+			})
+		}else{
+			X.tip(data['resultMsg']);
+		}
+	}).catch(function () {
+		X.tip('服务器请求异常');
+	})
+
 });
 //充值银行卡 DONE
 myControllers.controller('PayBankCtrl', function ($scope, $q, $location, UserService, PayService) {
 	var payForm = document.getElementById('payForm');
 	$scope.backURL = $location.search()['backURL'] || '/fund';
+	$scope.payType = $location.search()['type'];
 	$scope.balance = 0;
 	$scope.userInfo = {};
 	$scope.money = '';//充值金额
@@ -2918,18 +2948,26 @@ myControllers.controller('PayBankCtrl', function ($scope, $q, $location, UserSer
 		}
 
 		//最低100元，测试后添加
-		// if ($scope.money < 100) {
-		//     X.tip('最低100元起充');
-		//     return;
-		// }
+		if ($scope.money < 100) {
+		    X.tip('最低100元起充');
+		    return;
+		}
 
 		if ($scope.money > 5000) {
 			X.tip('单次充值最高5000元');
 			return;
 		}
+		var httpRequest;
+		if($scope.payType == 'pay_lianlian'){
+			httpRequest = PayService.getLLWapPayUrl($scope.money)
+		}else if($scope.payType == 'pay_liandong'){
+			httpRequest = PayService.liandongH5pay($scope.money)
+		}else if($scope.payType == 'pay_iapppay'){
+			httpRequest = PayService.iappPayH5Pay($scope.money)
+		}
 
 		X.loading.show();
-		PayService.payGateway($scope.money).then(function (res) {
+		httpRequest.then(function (res) {
 			var data = res.data;
 			if (data.code == 100) {
 				pay(data.data);
@@ -2947,10 +2985,16 @@ myControllers.controller('PayBankCtrl', function ($scope, $q, $location, UserSer
 
 
 	function pay(payData) {
-		var data = JSON.parse(payData),payURL = data.url, reqData = data.req_data;
-		$('.hiddenInp')[0].value = reqData;
-		payForm.setAttribute('action', payURL);
-		payForm.submit();
+		if($scope.payType == 'pay_lianlian'){
+			var data = JSON.parse(payData),payURL = data.url, reqData = data.req_data;
+			$('.hiddenInp')[0].value = reqData;
+			payForm.setAttribute('action', payURL);
+			payForm.submit();
+		}else if( $scope.payType == 'pay_liandong' || $scope.payType == 'pay_iapppay'){
+			// var payURL = payData;
+			payForm.setAttribute('action', payData);
+			payForm.submit();
+		}
 	}
 
 	// function payConfirm() {
@@ -5991,7 +6035,7 @@ myControllers.controller('OneYuanTradeCtrl', function ($scope, $q, $routeParams,
 
 		kChart && kChart.draw(CACHE_KLINE);
 	}
-
+	//更新闪电图信息
 	function perDrawTick(data) {
 		tChart && tChart.draw({
 			time: data.time,
